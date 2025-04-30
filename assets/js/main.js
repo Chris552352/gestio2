@@ -1,100 +1,57 @@
 /**
  * Script principal pour le système de gestion de présence
+ * Version simplifiée pour l'explication
  */
 
-// Attendre que le document soit chargé
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialisation des tooltips Bootstrap
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-    
-    // Gestion des alertes autodismiss après 5 secondes
+// Attendre que la page soit chargée
+$(document).ready(function() {
+    // Masquer les alertes automatiquement après 3 secondes
     setTimeout(function() {
-        var alerts = document.querySelectorAll('.alert');
-        alerts.forEach(function(alert) {
-            var bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-        });
-    }, 5000);
+        $('.alert').fadeOut('slow');
+    }, 3000);
     
     // Confirmation avant suppression
-    var deleteButtons = document.querySelectorAll('.btn-delete');
-    deleteButtons.forEach(function(button) {
-        button.addEventListener('click', function(e) {
-            if (!confirm('Êtes-vous sûr de vouloir supprimer cet élément ?')) {
-                e.preventDefault();
-            }
-        });
+    $('.btn-delete').click(function() {
+        return confirm('Êtes-vous sûr de vouloir supprimer cet élément ?');
     });
     
-    // Gestion des formulaires de filtrage
-    var filterForm = document.getElementById('filter-form');
-    if (filterForm) {
-        filterForm.addEventListener('submit', function(e) {
-            // Supprimer les champs vides pour éviter des paramètres d'URL inutiles
-            var inputs = filterForm.querySelectorAll('input, select');
-            inputs.forEach(function(input) {
-                if (input.value === '') {
-                    input.disabled = true;
-                }
-            });
-        });
-    }
-    
-    // Fonction pour sélectionner/désélectionner tous les étudiants (page de présence)
-    var selectAllPresent = document.getElementById('select-all-present');
-    if (selectAllPresent) {
-        selectAllPresent.addEventListener('click', function(e) {
-            e.preventDefault();
-            var radioButtons = document.querySelectorAll('input[value="present"]');
-            radioButtons.forEach(function(radio) {
-                radio.checked = true;
-            });
-        });
-    }
-    
-    var selectAllAbsent = document.getElementById('select-all-absent');
-    if (selectAllAbsent) {
-        selectAllAbsent.addEventListener('click', function(e) {
-            e.preventDefault();
-            var radioButtons = document.querySelectorAll('input[value="absent"]');
-            radioButtons.forEach(function(radio) {
-                radio.checked = true;
-            });
-        });
-    }
-    
-    // Si on change de cours dans le formulaire de présence, actualiser la page
-    var coursSelect = document.getElementById('cours-select');
-    var dateInput = document.getElementById('date-presence');
-    
-    if (coursSelect && dateInput) {
-        coursSelect.addEventListener('change', function() {
-            if (dateInput.value) {
-                document.getElementById('filter-presence-form').submit();
-            }
-        });
-        
-        dateInput.addEventListener('change', function() {
-            if (coursSelect.value) {
-                document.getElementById('filter-presence-form').submit();
-            }
-        });
-    }
-    
-    // Validation des formulaires côté client
-    var forms = document.querySelectorAll('.needs-validation');
-    Array.from(forms).forEach(function (form) {
-        form.addEventListener('submit', function (event) {
-            if (!form.checkValidity()) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
-            form.classList.add('was-validated');
-        }, false);
+    // Marquer tous les étudiants présents
+    $('#select-all-present').click(function(e) {
+        e.preventDefault();
+        $('input[value="present"]').prop('checked', true);
     });
+    
+    // Marquer tous les étudiants absents
+    $('#select-all-absent').click(function(e) {
+        e.preventDefault();
+        $('input[value="absent"]').prop('checked', true);
+    });
+    
+    // Soumettre le formulaire quand on change de cours ou de date
+    $('#cours-select, #date-presence').change(function() {
+        if ($('#cours-select').val() && $('#date-presence').val()) {
+            $('#filter-presence-form').submit();
+        }
+    });
+    
+    // Validation simple des formulaires
+    $('.needs-validation').submit(function(event) {
+        if (this.checkValidity() === false) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        $(this).addClass('was-validated');
+    });
+    
+    // Effet visuel sur les cartes du dashboard
+    $('.dashboard-card').hover(
+        function() {
+            $(this).css('transform', 'scale(1.05)');
+        },
+        function() {
+            $(this).css('transform', 'scale(1)');
+        }
+    );
 });
 
 /**
@@ -103,8 +60,6 @@ document.addEventListener('DOMContentLoaded', function() {
  * @param {string} filename - Nom du fichier PDF
  */
 function exportTableToPDF(tableId, filename) {
-    // Cette fonction serait normalement implémentée avec jsPDF ou une bibliothèque similaire
-    // Comme nous n'utilisons pas de bibliothèques externes, nous redirigeons vers une page PHP qui génère le PDF côté serveur
-    var url = 'export_pdf.php?table=' + tableId + '&filename=' + filename;
-    window.open(url, '_blank');
+    // Fonction simplifiée d'exemple
+    alert('Le tableau ' + tableId + ' serait exporté sous le nom ' + filename);
 }

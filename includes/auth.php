@@ -30,6 +30,23 @@ function verifierConnexion() {
 
 // Fonction d'authentification utilisateur
 function authentifier($email, $mot_de_passe, $pdo) {
+    // Mode démo SQLite
+    if (get_class($pdo) === 'PDO' && $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
+        // En mode démo, accepter l'identifiant de démo
+        if ($email === 'chris552352@gmail.com' && $mot_de_passe === '552352') {
+            // Création des variables de session pour le mode démo
+            $_SESSION['utilisateur_id'] = 1;
+            $_SESSION['nom'] = 'Dupont';
+            $_SESSION['prenom'] = 'Chris';
+            $_SESSION['email'] = 'chris552352@gmail.com';
+            $_SESSION['role'] = 'enseignant';
+            
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     try {
         $stmt = $pdo->prepare("SELECT id, nom, prenom, email, mot_de_passe, role FROM utilisateurs WHERE email = :email");
         $stmt->execute(['email' => $email]);

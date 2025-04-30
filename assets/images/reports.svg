@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fond du rapport -->
+  <rect x="50" y="50" width="300" height="200" rx="10" ry="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" />
+  
+  <!-- En-tête du rapport -->
+  <rect x="50" y="50" width="300" height="40" rx="10" ry="10" fill="#7C3AED" />
+  <text x="200" y="75" font-family="Arial" font-size="16" font-weight="bold" fill="#FFFFFF" text-anchor="middle">Rapport de Présence</text>
+  
+  <!-- Graphiques -->
+  <!-- Diagramme à barres -->
+  <rect x="80" y="110" width="20" height="100" fill="#4F46E5" />
+  <rect x="110" y="130" width="20" height="80" fill="#4F46E5" />
+  <rect x="140" y="90" width="20" height="120" fill="#4F46E5" />
+  <rect x="170" y="150" width="20" height="60" fill="#4F46E5" />
+  <line x1="70" y1="210" x2="200" y2="210" stroke="#334155" stroke-width="2" />
+  <line x1="70" y1="210" x2="70" y2="90" stroke="#334155" stroke-width="2" />
+  
+  <!-- Diagramme circulaire -->
+  <circle cx="280" cy="150" r="50" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" />
+  <path d="M280,150 L280,100 A50,50 0 0,1 325,175 z" fill="#7C3AED" />
+  <path d="M280,150 L325,175 A50,50 0 0,1 280,200 z" fill="#4F46E5" />
+  <path d="M280,150 L280,200 A50,50 0 0,1 235,175 z" fill="#3B82F6" />
+  <path d="M280,150 L235,175 A50,50 0 0,1 280,100 z" fill="#60A5FA" />
+  
+  <!-- Légendes -->
+  <rect x="80" y="230" width="10" height="10" fill="#4F46E5" />
+  <text x="100" y="238" font-family="Arial" font-size="10" fill="#334155">Présences par mois</text>
+  
+  <rect x="230" y="230" width="10" height="10" fill="#7C3AED" />
+  <text x="250" y="238" font-family="Arial" font-size="10" fill="#334155">Présents</text>
+  
+  <rect x="300" y="230" width="10" height="10" fill="#3B82F6" />
+  <text x="320" y="238" font-family="Arial" font-size="10" fill="#334155">Absents</text>
+</svg>

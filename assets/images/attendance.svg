@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <!-- Clipboard -->
+  <rect x="120" y="40" width="160" height="220" rx="10" ry="10" fill="#F5F5F5" stroke="#94A3B8" stroke-width="3" />
+  <rect x="140" y="30" width="120" height="20" rx="5" ry="5" fill="#94A3B8" />
+  
+  <!-- Lignes du presse-papier -->
+  <line x1="150" y1="80" x2="250" y2="80" stroke="#94A3B8" stroke-width="2" />
+  <line x1="150" y1="110" x2="250" y2="110" stroke="#94A3B8" stroke-width="2" />
+  <line x1="150" y1="140" x2="250" y2="140" stroke="#94A3B8" stroke-width="2" />
+  <line x1="150" y1="170" x2="250" y2="170" stroke="#94A3B8" stroke-width="2" />
+  <line x1="150" y1="200" x2="250" y2="200" stroke="#94A3B8" stroke-width="2" />
+  <line x1="150" y1="230" x2="250" y2="230" stroke="#94A3B8" stroke-width="2" />
+  
+  <!-- Icônes de présence -->
+  <circle cx="170" cy="95" r="6" fill="#22C55E" />
+  <path d="M165,95 L168,98 L175,91" stroke="white" stroke-width="2" fill="none" />
+  
+  <circle cx="170" cy="125" r="6" fill="#22C55E" />
+  <path d="M165,125 L168,128 L175,121" stroke="white" stroke-width="2" fill="none" />
+  
+  <circle cx="170" cy="155" r="6" fill="#EF4444" />
+  <path d="M166,151 L174,159 M174,151 L166,159" stroke="white" stroke-width="2" />
+  
+  <circle cx="170" cy="185" r="6" fill="#22C55E" />
+  <path d="M165,185 L168,188 L175,181" stroke="white" stroke-width="2" fill="none" />
+  
+  <circle cx="170" cy="215" r="6" fill="#F59E0B" />
+  <path d="M170,212 L170,215 M170,218 L170,218" stroke="white" stroke-width="2" />
+  
+  <!-- Noms -->
+  <text x="190" y="97" font-family="Arial" font-size="10" fill="#333333">Marie Dupont</text>
+  <text x="190" y="127" font-family="Arial" font-size="10" fill="#333333">Thomas Martin</text>
+  <text x="190" y="157" font-family="Arial" font-size="10" fill="#333333">Julie Bernard</text>
+  <text x="190" y="187" font-family="Arial" font-size="10" fill="#333333">Lucas Petit</text>
+  <text x="190" y="217" font-family="Arial" font-size="10" fill="#333333">Sophie Dubois</text>
+  
+  <!-- Titre en bas -->
+  <text x="200" y="280" font-family="Arial" font-size="18" font-weight="bold" fill="#475569" text-anchor="middle">Suivi des Présences</text>
+</svg>

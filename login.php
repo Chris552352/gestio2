@@ -50,65 +50,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Style personnalisé -->
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body class="bg-light">
+<body class="login-page">
     <div class="container">
+        <!-- Bannière d'images décorative en haut -->
+        <div class="image-banner">
+            <img src="assets/images/students.svg" alt="Étudiants" width="150">
+            <img src="assets/images/courses.svg" alt="Cours" width="150">
+            <img src="assets/images/attendance.svg" alt="Présence" width="150">
+        </div>
+        
         <div class="login-container">
-            <div class="login-logo text-center mb-4">
-                <i class="fas fa-user-check mb-2"></i>
-                <h2>Gestion de Présence</h2>
+            <div class="login-logo text-center">
+                <img src="assets/images/logo.svg" alt="Logo" class="mb-3">
+                <h2 class="text-bleu">Gestion de Présence</h2>
                 <p class="text-muted">Connectez-vous pour accéder au système</p>
             </div>
             
             <?php if (!empty($erreur)): ?>
                 <div class="alert alert-danger" role="alert">
-                    <?php echo $erreur; ?>
+                    <i class="fas fa-exclamation-circle me-2"></i><?php echo $erreur; ?>
                 </div>
             <?php endif; ?>
             
             <?php if (isset($_SESSION['message_succes'])): ?>
                 <div class="alert alert-success" role="alert">
-                    <?php echo $_SESSION['message_succes']; ?>
+                    <i class="fas fa-check-circle me-2"></i><?php echo $_SESSION['message_succes']; ?>
                 </div>
                 <?php unset($_SESSION['message_succes']); ?>
             <?php endif; ?>
             
             <form method="post" action="" class="needs-validation" novalidate>
-                <div class="mb-3">
+                <!-- Champ Email -->
+                <div class="mb-4">
                     <label for="email" class="form-label">Email</label>
                     <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                        <input type="email" class="form-control" id="email" name="email" placeholder="votre@email.com" required>
-                        <div class="invalid-feedback">
-                            Veuillez saisir une adresse email valide.
-                        </div>
+                        <span class="input-group-text bg-bleu text-white"><i class="fas fa-envelope"></i></span>
+                        <input type="email" class="form-control" id="email" name="email" placeholder="exemple@email.com" required>
                     </div>
+                    <small class="text-muted">Entrez l'adresse email de votre compte.</small>
                 </div>
-                <div class="mb-3">
+                
+                <!-- Champ Mot de passe -->
+                <div class="mb-4">
                     <label for="password" class="form-label">Mot de passe</label>
                     <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                        <span class="input-group-text bg-bleu text-white"><i class="fas fa-lock"></i></span>
                         <input type="password" class="form-control" id="password" name="password" required>
-                        <div class="invalid-feedback">
-                            Veuillez saisir votre mot de passe.
-                        </div>
                     </div>
+                    <small class="text-muted">Entrez votre mot de passe personnel.</small>
                 </div>
-                <div class="mb-3 form-check">
+                
+                <!-- Option Se souvenir de moi -->
+                <div class="mb-4 form-check">
                     <input type="checkbox" class="form-check-input" id="remember">
                     <label class="form-check-label" for="remember">Se souvenir de moi</label>
                 </div>
-                <div class="d-grid gap-2 mb-3">
-                    <button type="submit" class="btn btn-primary">
+                
+                <!-- Bouton de connexion -->
+                <div class="d-grid gap-2 mb-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
                         <i class="fas fa-sign-in-alt me-2"></i> Se connecter
                     </button>
                 </div>
-                <div class="text-center">
-                    <a href="#" class="text-decoration-none">Mot de passe oublié ?</a>
+                
+                <!-- Lien mot de passe oublié -->
+                <div class="text-center mb-3">
+                    <a href="#" class="text-decoration-none text-bleu">Mot de passe oublié ?</a>
                 </div>
             </form>
+            
+            <!-- Aide à la connexion -->
+            <div class="mt-4 p-3 bg-light rounded">
+                <h5 class="text-center text-bleu mb-2">Besoin d'aide ?</h5>
+                <p class="small text-center">
+                    Pour une démonstration, utilisez:<br>
+                    <strong>Email:</strong> chris552352@gmail.com<br>
+                    <strong>Mot de passe:</strong> 552352
+                </p>
+            </div>
         </div>
         
-        <div class="text-center mt-4 text-muted">
+        <!-- Pied de page -->
+        <div class="text-center mt-4 text-white">
             <p>&copy; <?php echo date('Y'); ?> Système de Gestion de Présence. Tous droits réservés.</p>
         </div>
     </div>
@@ -116,24 +139,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- jQuery et Bootstrap JS -->
     <script src="vendor/jquery/jquery-3.6.0.min.js"></script>
     <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-        // Validation du formulaire
-        (function() {
-            'use strict';
-            
-            var forms = document.querySelectorAll('.needs-validation');
-            
-            Array.from(forms).forEach(function (form) {
-                form.addEventListener('submit', function (event) {
-                    if (!form.checkValidity()) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                    }
-                    form.classList.add('was-validated');
-                }, false);
-            });
-        })();
-    </script>
+    <script src="assets/js/main.js"></script>
 </body>
 </html>

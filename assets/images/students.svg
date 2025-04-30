@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <!-- Groupe d'étudiants -->
+  <!-- Étudiant 1 -->
+  <g transform="translate(80, 120)">
+    <circle cx="0" cy="0" r="30" fill="#3B82F6" />
+    <circle cx="0" cy="-15" r="18" fill="#F5F5F5" />
+    <path d="M-15,15 Q0,30 15,15" stroke="#F5F5F5" stroke-width="3" fill="none" />
+  </g>
+  
+  <!-- Étudiant 2 -->
+  <g transform="translate(160, 100)">
+    <circle cx="0" cy="0" r="30" fill="#10B981" />
+    <circle cx="0" cy="-15" r="18" fill="#F5F5F5" />
+    <path d="M-15,15 Q0,30 15,15" stroke="#F5F5F5" stroke-width="3" fill="none" />
+  </g>
+  
+  <!-- Étudiant 3 -->
+  <g transform="translate(240, 130)">
+    <circle cx="0" cy="0" r="30" fill="#F59E0B" />
+    <circle cx="0" cy="-15" r="18" fill="#F5F5F5" />
+    <path d="M-15,15 Q0,30 15,15" stroke="#F5F5F5" stroke-width="3" fill="none" />
+  </g>
+  
+  <!-- Éléments de texte -->
+  <text x="120" y="200" font-family="Arial" font-size="20" font-weight="bold" fill="#333333" text-anchor="middle">Gestion des Étudiants</text>
+  <text x="120" y="225" font-family="Arial" font-size="14" fill="#666666" text-anchor="middle">Groupe et Informations</text>
+  
+  <!-- Décorations -->
+  <rect x="30" y="30" width="340" height="240" rx="20" ry="20" stroke="#CBD5E1" stroke-width="2" fill="none" />
+  <path d="M30,70 H370" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="5,5" />
+  <path d="M30,180 H370" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="5,5" />
+</svg>
