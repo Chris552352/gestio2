@@ -5,6 +5,9 @@ require_once 'includes/db_connect.php';
 require_once 'includes/auth.php';
 require_once 'includes/functions.php';
 
+// Affichage du message de mode démo si nécessaire
+$mode_demo = isset($_SESSION['mode_demo']) && $_SESSION['mode_demo'] === true;
+
 // Si l'utilisateur est déjà connecté, rediriger vers le tableau de bord
 if (estConnecte()) {
     header('Location: dashboard.php');
@@ -65,6 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <h2 class="text-bleu">Gestion de Présence</h2>
                 <p class="text-muted">Connectez-vous pour accéder au système</p>
             </div>
+            
+            <?php if ($mode_demo): ?>
+                <div class="alert alert-warning" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>Mode démonstration activé - Connexion sans base de données (uniquement pour visualiser l'interface)
+                </div>
+            <?php endif; ?>
             
             <?php if (!empty($erreur)): ?>
                 <div class="alert alert-danger" role="alert">

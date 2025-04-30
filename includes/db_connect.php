@@ -44,10 +44,9 @@ try {
     $pdo->exec("INSERT INTO etudiants (nom, prenom) VALUES ('Martin', 'Sophie'), ('Dubois', 'Thomas'), ('Bernard', 'Emma')");
     $pdo->exec("INSERT INTO cours (nom) VALUES ('Mathématiques'), ('Français'), ('Histoire')");
     
-    // Message d'avertissement affiché uniquement sur la page de login
-    if (basename($_SERVER['PHP_SELF']) === 'login.php') {
-        echo '<div class="alert alert-warning">Mode démonstration activé - Connexion sans base de données (uniquement pour visualiser l\'interface)</div>';
-    }
+    // Message d'avertissement pour le mode démo
+    // On ne l'affiche pas directement ici pour éviter le problème de "headers already sent"
+    $_SESSION['mode_demo'] = true;
 }
 
 /**
