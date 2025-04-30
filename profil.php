@@ -7,6 +7,9 @@ require_once 'includes/functions.php';
 // Vérifier si l'utilisateur est connecté
 verifierConnexion();
 
+// Supprime les avertissements en cas d'output buffering
+ob_start();
+
 // Récupérer les informations de l'utilisateur connecté
 try {
     $stmt = $pdo->prepare("SELECT * FROM utilisateurs WHERE id = :id");
@@ -27,8 +30,10 @@ try {
 // Traitement du formulaire de mise à jour
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Récupération et validation des données
-    $nom = filter_input(INPUT_POST, 'nom', FILTER_SANITIZE_STRING);
-    $prenom = filter_input(INPUT_POST, 'prenom', FILTER_SANITIZE_STRING);
+    $nom = filter_input(INPUT_POST, 'nom', FILTER_DEFAULT);
+    $nom = $nom ? htmlspecialchars($nom, ENT_QUOTES, 'UTF-8') : null;
+    $prenom = filter_input(INPUT_POST, 'prenom', FILTER_DEFAULT);
+    $prenom = $prenom ? htmlspecialchars($prenom, ENT_QUOTES, 'UTF-8') : null;
     $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
     
     // Validation basique
