@@ -45,8 +45,8 @@ function obtenirNombreCours($pdo) {
 // Fonction pour obtenir le nombre de présences aujourd'hui
 function obtenirPresencesAujourdhui($pdo) {
     try {
-        // Adapté pour PostgreSQL: CURRENT_DATE au lieu de CURDATE()
-        $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM presences WHERE date_presence = CURRENT_DATE AND statut = 'present'");
+        // Adapté pour MySQL: CURDATE()
+        $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM presences WHERE date_presence = CURDATE() AND statut = 'present'");
         $stmt->execute();
         $resultat = $stmt->fetch();
         return $resultat['total'];
@@ -58,8 +58,8 @@ function obtenirPresencesAujourdhui($pdo) {
 // Fonction pour obtenir le nombre d'absences aujourd'hui
 function obtenirAbsencesAujourdhui($pdo) {
     try {
-        // Adapté pour PostgreSQL: CURRENT_DATE au lieu de CURDATE()
-        $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM presences WHERE date_presence = CURRENT_DATE AND statut = 'absent'");
+        // Adapté pour MySQL: CURDATE()
+        $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM presences WHERE date_presence = CURDATE() AND statut = 'absent'");
         $stmt->execute();
         $resultat = $stmt->fetch();
         return $resultat['total'];
@@ -71,9 +71,9 @@ function obtenirAbsencesAujourdhui($pdo) {
 // Fonction pour obtenir tous les cours
 function obtenirTousLesCours($pdo) {
     try {
-        // Adapté pour PostgreSQL: || pour la concaténation au lieu de CONCAT()
+        // Adapté pour MySQL: CONCAT() pour la concaténation
         $stmt = $pdo->query("
-            SELECT c.*, (u.prenom || ' ' || u.nom) as nom_enseignant 
+            SELECT c.*, CONCAT(u.prenom, ' ', u.nom) as nom_enseignant 
             FROM cours c
             LEFT JOIN utilisateurs u ON c.enseignant_id = u.id
             ORDER BY c.nom ASC
@@ -87,9 +87,9 @@ function obtenirTousLesCours($pdo) {
 // Fonction pour obtenir un cours par ID
 function obtenirCoursParId($pdo, $id) {
     try {
-        // Adapté pour PostgreSQL: || pour la concaténation au lieu de CONCAT()
+        // Adapté pour MySQL: CONCAT() pour la concaténation
         $stmt = $pdo->prepare("
-            SELECT c.*, (u.prenom || ' ' || u.nom) as nom_enseignant 
+            SELECT c.*, CONCAT(u.prenom, ' ', u.nom) as nom_enseignant 
             FROM cours c
             LEFT JOIN utilisateurs u ON c.enseignant_id = u.id
             WHERE c.id = :id
@@ -265,16 +265,16 @@ function obtenirStatistiquesParMois($pdo, $annee = null) {
     }
     
     try {
-        // Adapté pour PostgreSQL: utilisation de EXTRACT() au lieu de MONTH() et YEAR()
+        // Adapté pour MySQL: utilisation de MONTH() et YEAR()
         $stmt = $pdo->prepare("
             SELECT 
-                EXTRACT(MONTH FROM date_presence) as mois,
+                MONTH(date_presence) as mois,
                 SUM(CASE WHEN statut = 'present' THEN 1 ELSE 0 END) as total_present,
                 SUM(CASE WHEN statut = 'absent' THEN 1 ELSE 0 END) as total_absent
             FROM presences
-            WHERE EXTRACT(YEAR FROM date_presence) = :annee
-            GROUP BY EXTRACT(MONTH FROM date_presence)
-            ORDER BY EXTRACT(MONTH FROM date_presence)
+            WHERE YEAR(date_presence) = :annee
+            GROUP BY MONTH(date_presence)
+            ORDER BY MONTH(date_presence)
         ");
         $stmt->execute(['annee' => $annee]);
         return $stmt->fetchAll();

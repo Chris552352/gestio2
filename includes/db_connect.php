@@ -1,14 +1,13 @@
 <?php
-// Connexion à la base de données
-// Remarque: Utilisation temporaire de PostgreSQL pour ce déploiement
-// Le projet final devra utiliser MySQL conformément aux exigences
+// Connexion à la base de données MySQL pour WAMP
+// Configuration pour environnement local WAMP
 
-// Récupération des variables d'environnement
-$host = getenv('PGHOST') ?: 'localhost';
-$port = getenv('PGPORT') ?: '5432';
-$dbname = getenv('PGDATABASE') ?: 'gestion_presence';
-$username = getenv('PGUSER') ?: 'root';
-$password = getenv('PGPASSWORD') ?: '';
+// Configuration MySQL
+$host = 'localhost';
+$port = '3306'; // Port par défaut de MySQL
+$dbname = 'gestion_presence';
+$username = 'root'; // Utilisateur par défaut de WAMP
+$password = ''; // Mot de passe par défaut (vide) pour WAMP
 
 // Options de connexion PDO
 $options = [
@@ -18,8 +17,8 @@ $options = [
 ];
 
 try {
-    // Création de l'instance PDO avec PostgreSQL
-    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
+    // Création de l'instance PDO avec MySQL
+    $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
     $pdo = new PDO($dsn, $username, $password, $options);
 } catch (PDOException $e) {
     // En cas d'erreur de connexion, afficher un message

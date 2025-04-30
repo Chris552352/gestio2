@@ -36,8 +36,8 @@ function authentifier($email, $mot_de_passe, $pdo) {
         $utilisateur = $stmt->fetch();
         
         if ($utilisateur && password_verify($mot_de_passe, $utilisateur['mot_de_passe'])) {
-            // Mise à jour de la dernière connexion (adapté pour PostgreSQL)
-            $stmt = $pdo->prepare("UPDATE utilisateurs SET derniere_connexion = CURRENT_TIMESTAMP WHERE id = :id");
+            // Mise à jour de la dernière connexion (adapté pour MySQL)
+            $stmt = $pdo->prepare("UPDATE utilisateurs SET derniere_connexion = NOW() WHERE id = :id");
             $stmt->execute(['id' => $utilisateur['id']]);
             
             // Création des variables de session
