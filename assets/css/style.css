@@ -1,0 +1,204 @@
+/* Styles personnalisés pour le système de gestion de présence */
+
+/* Base */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+}
+
+/* Sidebar */
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100; /* Derrière la navbar */
+    padding: 48px 0 0; /* Hauteur de la navbar */
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+    background-color: #343a40 !important;
+}
+
+@media (max-width: 767.98px) {
+    .sidebar {
+        position: static;
+        height: auto;
+        padding-top: 0;
+    }
+}
+
+.sidebar .nav-link {
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.75);
+    padding: 0.75rem 1rem;
+    transition: color 0.2s ease-in-out;
+}
+
+.sidebar .nav-link:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar .nav-link.active {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar .nav-link i {
+    margin-right: 0.5rem;
+}
+
+/* Cards du dashboard */
+.card-stats {
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card-stats:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-stats .card-header {
+    border-radius: 10px 10px 0 0;
+    font-weight: 500;
+}
+
+.card-stats .card-icon {
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-right: 15px;
+}
+
+/* Tableaux de données */
+.table-container {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 500;
+}
+
+/* Formulaires */
+.form-container {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    padding: 30px;
+    margin-bottom: 30px;
+}
+
+.form-label {
+    font-weight: 500;
+}
+
+/* Page de connexion */
+.login-container {
+    max-width: 450px;
+    margin: 100px auto;
+    padding: 30px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.login-logo {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-logo i {
+    font-size: 3rem;
+    color: #0d6efd;
+}
+
+/* Boutons */
+.btn-action {
+    border-radius: 5px;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.btn-action i {
+    margin-right: 5px;
+}
+
+/* Cartes de statistiques */
+.bg-info-light {
+    background-color: rgba(13, 202, 240, 0.15);
+}
+
+.bg-warning-light {
+    background-color: rgba(255, 193, 7, 0.15);
+}
+
+.bg-success-light {
+    background-color: rgba(25, 135, 84, 0.15);
+}
+
+.bg-primary-light {
+    background-color: rgba(13, 110, 253, 0.15);
+}
+
+/* Canvas pour les graphiques */
+.chart-container {
+    position: relative;
+    margin: auto;
+    height: 300px;
+    margin-bottom: 30px;
+}
+
+/* Section des filtres de rapports */
+.filter-section {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+/* Badge de statut présence/absence */
+.badge-presence {
+    font-size: 0.85rem;
+    padding: 0.5em 0.75em;
+}
+
+/* Animation pour les boutons d'action */
+.btn-action {
+    transition: all 0.3s;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+}
+
+/* Page de profil utilisateur */
+.profile-header {
+    background-color: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+}
+
+.profile-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background-color: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: #6c757d;
+    margin-right: 20px;
+}
