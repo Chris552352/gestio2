@@ -1,5 +1,8 @@
 <?php
-session_start();
+// Éviter de démarrer la session si elle est déjà active
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Fonction pour vérifier si l'utilisateur est connecté
 function estConnecte() {
