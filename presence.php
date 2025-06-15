@@ -1,273 +1,465 @@
 <?php
-// Page pour marquer les présences
-require_once 'includes/db_connect.php';
+/**
+ * Page de marquage des présences
+ */
+
+// Inclure les fichiers nécessaires
 require_once 'includes/auth.php';
-require_once 'includes/functions.php';
+require_once 'config/database.php';
 
-// Vérifier si l'utilisateur est connecté
-verifierConnexion();
+// Vérifier l'authentification
+require_auth();
 
-// Récupération des paramètres
-$cours_id = isset($_GET['cours_id']) ? intval($_GET['cours_id']) : (isset($_POST['cours_id']) ? intval($_POST['cours_id']) : 0);
-$date_presence = isset($_GET['date']) ? $_GET['date'] : (isset($_POST['date']) ? $_POST['date'] : date('Y-m-d'));
-
-// Vérifier si la date est valide
-$date_obj = DateTime::createFromFormat('Y-m-d', $date_presence);
-if (!$date_obj || $date_obj->format('Y-m-d') !== $date_presence) {
-    $date_presence = date('Y-m-d');
+// Récupérer la liste des cours (filtrée par enseignant si nécessaire)
+if (est_admin()) {
+    // Les administrateurs voient tous les cours
+    $cours = db_query("SELECT c.id, c.nom, c.code, (SELECT COUNT(*) FROM inscriptions i WHERE i.cours_id = c.id) as nb_etudiants FROM cours c ORDER BY c.nom");
+} else {
+    // Les enseignants ne voient que leurs cours
+    $cours = db_query("SELECT c.id, c.nom, c.code, (SELECT COUNT(*) FROM inscriptions i WHERE i.cours_id = c.id) as nb_etudiants FROM cours c WHERE c.enseignant_id = ? ORDER BY c.nom", [$_SESSION['user_id']]);
 }
 
-// Récupérer tous les cours
-try {
-    $stmt = $pdo->query("SELECT id, code, nom FROM cours ORDER BY nom");
-    $cours = $stmt->fetchAll();
-} catch (PDOException $e) {
-    $_SESSION['message_erreur'] = "Erreur lors de la récupération des cours: " . $e->getMessage();
-    $cours = [];
+// Récupérer la date du jour (par défaut)
+$date = isset($_POST['date']) ? $_POST['date'] : date('Y-m-d');
+$cours_id = isset($_POST['cours_id']) ? (int)$_POST['cours_id'] : 0;
+
+// Vérifier si le bouton 'Afficher les Étudiants' a été cliqué
+if (isset($_POST['show_students']) && $_POST['show_students'] == '1') {
+    // Rediriger vers la même page avec les paramètres en GET pour éviter les problèmes de formulaire
+    header("Location: presence.php?cours_id=" . $cours_id . "&date=" . $date);
+    exit;
 }
 
-// Si un cours est sélectionné, récupérer les étudiants inscrits
-$etudiants = [];
-$coursSelectionne = null;
+// Récupérer les paramètres de l'URL si présents
+if (isset($_GET['cours_id'])) {
+    $cours_id = (int)$_GET['cours_id'];
+}
+if (isset($_GET['date'])) {
+    $date = $_GET['date'];
+}
 
+// Vérifier si l'enseignant a le droit d'accéder à ce cours
+if ($cours_id > 0 && !est_admin()) {
+    $cours_autorise = db_query_single("SELECT id FROM cours WHERE id = ? AND enseignant_id = ?", [$cours_id, $_SESSION['user_id']]);
+    if (!$cours_autorise) {
+        alerte("Vous n'avez pas les droits nécessaires pour accéder à ce cours.", "danger");
+        rediriger("mes_cours.php");
+    }
+}
+
+// Récupérer les informations du cours sélectionné
+$cours_info = null;
 if ($cours_id > 0) {
-    try {
-        // Récupérer les informations du cours
-        $stmt = $pdo->prepare("
-            SELECT c.*, CONCAT(u.prenom, ' ', u.nom) as nom_enseignant
-            FROM cours c
-            LEFT JOIN utilisateurs u ON c.enseignant_id = u.id
-            WHERE c.id = :id
-        ");
-        $stmt->execute(['id' => $cours_id]);
-        $coursSelectionne = $stmt->fetch();
-        
-        if (!$coursSelectionne) {
-            $_SESSION['message_erreur'] = "Cours non trouvé.";
-            header('Location: presence.php');
-            exit();
-        }
-        
-        // Récupérer les étudiants inscrits à ce cours
-        $stmt = $pdo->prepare("
-            SELECT e.*, 
-                  (SELECT statut FROM presences WHERE etudiant_id = e.id AND cours_id = :cours_id AND date_presence = :date_presence) as statut
-            FROM etudiants e
-            JOIN inscriptions i ON e.id = i.etudiant_id
-            WHERE i.cours_id = :cours_id
-            ORDER BY e.nom, e.prenom
-        ");
-        $stmt->execute([
-            'cours_id' => $cours_id,
-            'date_presence' => $date_presence
-        ]);
-        $etudiants = $stmt->fetchAll();
-    } catch (PDOException $e) {
-        $_SESSION['message_erreur'] = "Erreur lors de la récupération des données: " . $e->getMessage();
-    }
+    $cours_info = db_query_single("
+        SELECT c.*, u.nom as enseignant_nom, u.prenom as enseignant_prenom, u.email as enseignant_email
+        FROM cours c
+        LEFT JOIN utilisateurs u ON c.enseignant_id = u.id
+        WHERE c.id = ?
+    ", [$cours_id]);
 }
 
-// Traitement du formulaire d'enregistrement des présences
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enregistrer'])) {
-    $statuts = $_POST['statut'] ?? [];
-    $cours_id = intval($_POST['cours_id']);
-    $date_presence = $_POST['date'];
+// Liste des Étudiants Inscrits au cours sélectionné
+$etudiants = [];
+if ($cours_id > 0) {
+    $etudiants = db_query("
+        SELECT e.id, e.nom, e.prenom, e.matricule, e.email, 
+        COALESCE(p.statut, 'present') as statut,
+        p.justification, p.justifie
+        FROM etudiants e
+        JOIN inscriptions i ON e.id = i.etudiant_id
+        LEFT JOIN presences p ON e.id = p.etudiant_id AND p.cours_id = ? AND p.date_presence = ?
+        WHERE i.cours_id = ?
+        ORDER BY e.nom, e.prenom
+    ", [$cours_id, $date, $cours_id]);
+
+}
+
+// Traitement du formulaire de présence
+if (isset($_POST['save_presence']) && $cours_id > 0) {
+    $presences = $_POST['presence'] ?? [];
+    $date = $_POST['date'] ?? date('Y-m-d');
     
-    // Validation
-    if (empty($cours_id)) {
-        $_SESSION['message_erreur'] = "Veuillez sélectionner un cours.";
-    } else if (empty($date_presence)) {
-        $_SESSION['message_erreur'] = "Veuillez sélectionner une date.";
+    if (empty($presences)) {
+        alerte("Aucune donnée de présence n'a été soumise.", "warning");
     } else {
-        try {
-            $pdo->beginTransaction();
+        // Supprimer les anciennes données de présence pour ce cours et cette date
+        db_exec("DELETE FROM presences WHERE cours_id = ? AND date_presence = ?", [$cours_id, $date]);
+        
+        // Insérer les nouvelles données de présence
+        $success = true;
+        foreach ($presences as $etudiant_id => $statut) {
+            $result = db_exec(
+                "INSERT INTO presences (etudiant_id, cours_id, date_presence, statut, enregistre_par) VALUES (?, ?, ?, ?, ?)",
+                [$etudiant_id, $cours_id, $date, $statut, $_SESSION['user_id']]
+            );
             
-            // Supprimer d'abord toutes les présences existantes pour ce cours et cette date
-            $stmt = $pdo->prepare("
-                DELETE FROM presences 
-                WHERE cours_id = :cours_id AND date_presence = :date_presence
-            ");
-            $stmt->execute([
-                'cours_id' => $cours_id,
-                'date_presence' => $date_presence
-            ]);
-            
-            // Puis insérer les nouvelles présences
-            $compte_present = 0;
-            $compte_absent = 0;
-            
-            $stmt = $pdo->prepare("
-                INSERT INTO presences (etudiant_id, cours_id, date_presence, statut, enregistre_par)
-                VALUES (:etudiant_id, :cours_id, :date_presence, :statut, :enregistre_par)
-            ");
-            
-            foreach ($statuts as $etudiant_id => $statut) {
-                $stmt->execute([
-                    'etudiant_id' => $etudiant_id,
-                    'cours_id' => $cours_id,
-                    'date_presence' => $date_presence,
-                    'statut' => $statut,
-                    'enregistre_par' => $_SESSION['utilisateur_id']
-                ]);
-                
-                if ($statut === 'present') {
-                    $compte_present++;
-                } else {
-                    $compte_absent++;
-                }
+            if (!$result) {
+                $success = false;
+                break;
             }
+        }
+        
+        if ($success) {
+            alerte("Les présences ont été enregistrées avec succès.", "success");
             
-            $pdo->commit();
-            
-            $_SESSION['message_succes'] = "Présences enregistrées avec succès: $compte_present présent(s), $compte_absent absent(s).";
-            
-            // Redirection pour éviter la réexécution du code en cas de rafraîchissement
-            header("Location: presence.php?cours_id=$cours_id&date=$date_presence");
-            exit();
-        } catch (PDOException $e) {
-            $pdo->rollBack();
-            $_SESSION['message_erreur'] = "Erreur lors de l'enregistrement des présences: " . $e->getMessage();
+            // Rafraîchir la liste des étudiants avec les nouvelles données
+            $etudiants = db_query("
+                SELECT e.id, e.nom, e.prenom, e.matricule, e.email,
+                COALESCE(p.statut, 'present') as statut,
+                p.justification, p.justifie
+                FROM etudiants e
+                JOIN inscriptions i ON e.id = i.etudiant_id
+                LEFT JOIN presences p ON e.id = p.etudiant_id AND p.cours_id = ? AND p.date_presence = ?
+                WHERE i.cours_id = ?
+                ORDER BY e.nom, e.prenom
+            ", [$cours_id, $date, $cours_id]);
+        } else {
+            alerte("Erreur lors de l'enregistrement des présences.", "danger");
         }
     }
 }
 
-// Inclure l'en-tête
+// Inclure le header
 include 'includes/header.php';
 ?>
 
-<!-- Page Heading -->
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Gestion des Présences</h1>
-    <div>
-        <a href="rapports.php" class="d-none d-sm-inline-block btn btn-outline-primary shadow-sm me-2">
-            <i class="fas fa-chart-bar fa-sm text-primary-50 me-2"></i> Voir les rapports
-        </a>
-        <a href="cours.php" class="d-none d-sm-inline-block btn btn-outline-secondary shadow-sm">
-            <i class="fas fa-book fa-sm text-secondary-50 me-2"></i> Gérer les cours
-        </a>
-    </div>
-</div>
+<style>
+.presence-header-glass {
+  width: 100%;
+  margin-bottom: 2.5rem;
+  position: relative;
+  z-index: 1;
+  background: rgba(255,255,255,0.72);
+  box-shadow: 0 8px 32px 0 #00897b33;
+  border-radius: 1.7rem;
+  padding: 2rem 2.5rem 2rem 2.5rem;
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+  backdrop-filter: blur(8px);
+  animation: fadeInPresenceHeader 1.1s cubic-bezier(.22,1,.36,1);
+}
+.presence-header-glass .presence-header-img {
+  height: 110px;
+  width: 110px;
+  object-fit: contain;
+  border-radius: 1.2rem;
+  box-shadow: 0 2px 24px #00897b22;
+  background: #fff;
+  padding: 0.7rem;
+}
+.presence-header-glass .presence-header-title {
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: #00897b;
+  margin: 0;
+  text-shadow: 0 2px 8px #fff5;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.presence-header-glass .presence-header-title i {
+  font-size: 2.4rem;
+  color: #00695c;
+}
+@keyframes fadeInPresenceHeader {
+  from { opacity: 0; transform: translateY(32px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
 
-<!-- Sélection du cours et de la date -->
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Sélectionner un cours et une date</h6>
+.presence-badge {
+  display: inline-block; border-radius: 1em; padding: 0.2em 0.8em; font-size: 0.95em; font-weight: 600; color: #fff; margin-left: 0.4em;
+}
+.presence-badge.present {background: linear-gradient(90deg,#43e97b,#38f9d7 90%); color: #196a43;}
+.presence-badge.absent {background: linear-gradient(90deg,#ff5858,#f09819 90%); color: #fff;}
+.presence-badge.justifie {background: linear-gradient(90deg,#1976d2,#7b1fa2 90%); color: #fff;}
+.presence-table tr {transition: background 0.18s;}
+.presence-table tr:hover {background: #e0f2f1;}
+.presence-table th, .presence-table td {vertical-align: middle;}
+.btn-presence-anim {transition: transform 0.18s, box-shadow 0.18s;}
+.btn-presence-anim:hover {transform: translateY(-2px) scale(1.04); box-shadow: 0 4px 16px #00897b33;}
+</style>
+<div class="container-fluid">
+    <div class="presence-header-glass">
+        <img src="assets/images/attendance.svg" class="presence-header-img" alt="Présence">
+        <div class="presence-header-title">
+            <i class="fas fa-clipboard-check"></i> Marquer les Présences
+        </div>
     </div>
-    <div class="card-body">
-        <form action="" method="GET" id="filter-presence-form" class="row g-3">
-            <div class="col-md-5">
-                <label for="cours-select" class="form-label">Cours</label>
-                <select class="form-select" id="cours-select" name="cours_id" required>
-                    <option value="">-- Sélectionner un cours --</option>
-                    <?php foreach ($cours as $c): ?>
-                        <option value="<?php echo $c['id']; ?>" <?php echo ($cours_id == $c['id']) ? 'selected' : ''; ?>>
-                            <?php echo echapper($c['nom']) . ' (' . echapper($c['code']) . ')'; ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-md-5">
-                <label for="date-presence" class="form-label">Date</label>
-                <input type="date" class="form-control" id="date-presence" name="date" value="<?php echo $date_presence; ?>" required>
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="fas fa-filter me-2"></i> Filtrer
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
 
-<?php if ($cours_id > 0 && $coursSelectionne): ?>
-    <!-- Formulaire de présence -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-            <h6 class="m-0 font-weight-bold text-primary">
-                Marquer la présence - <?php echo echapper($coursSelectionne['nom']); ?> (<?php echo echapper($coursSelectionne['code']); ?>)
-                <br>
-                <small class="text-muted">Date: <?php echo formaterDate($date_presence); ?></small>
-            </h6>
-            <div>
-                <button type="button" id="select-all-present" class="btn btn-sm btn-success">Tous présents</button>
-                <button type="button" id="select-all-absent" class="btn btn-sm btn-danger">Tous absents</button>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card" style="border: none; box-shadow: 0 4px 12px rgba(0, 137, 123, 0.2);">
+                <div class="card-header text-white" style="background: linear-gradient(135deg, #00897b 0%, #00695c 100%);">
+                    <h5 class="card-title mb-0"><i class="fas fa-filter"></i> Sélectionner un Cours et une Date</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="presence.php" id="courseSelectForm">
+                        <div class="row">
+                            <div class="col-md-5">
+                                <label for="cours_id" class="form-label">Cours <span class="text-danger">*</span></label>
+                                <select class="form-select" id="cours_id" name="cours_id" required>
+                                    <option value="">-- Sélectionner un cours --</option>
+                                    <?php foreach ($cours as $c): ?>
+                                        <option value="<?php echo $c['id']; ?>" <?php echo $cours_id == $c['id'] ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($c['nom'] . ' (' . $c['code'] . ')', ENT_QUOTES, 'UTF-8'); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="date" class="form-label">Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="date" name="date" value="<?php echo $date; ?>" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary" name="show_students" value="1">
+                                        <i class="fas fa-search"></i> Afficher les Étudiants
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
-        <div class="card-body">
-            <?php if (count($etudiants) > 0): ?>
-                <form action="" method="POST">
-                    <input type="hidden" name="cours_id" value="<?php echo $cours_id; ?>">
-                    <input type="hidden" name="date" value="<?php echo $date_presence; ?>">
-                    
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Matricule</th>
-                                    <th>Nom & Prénom</th>
-                                    <th class="text-center">Statut</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($etudiants as $etudiant): ?>
-                                    <tr>
-                                        <td><?php echo echapper($etudiant['matricule']); ?></td>
-                                        <td><?php echo echapper($etudiant['prenom']) . ' ' . echapper($etudiant['nom']); ?></td>
-                                        <td>
-                                            <div class="d-flex justify-content-center">
-                                                <div class="form-check form-check-inline">
-                                                    <input class="form-check-input" type="radio" 
-                                                           name="statut[<?php echo $etudiant['id']; ?>]" 
-                                                           id="present-<?php echo $etudiant['id']; ?>" 
-                                                           value="present" 
-                                                           <?php echo ($etudiant['statut'] === 'present' || $etudiant['statut'] === null) ? 'checked' : ''; ?>>
-                                                    <label class="form-check-label text-success" for="present-<?php echo $etudiant['id']; ?>">
-                                                        <i class="fas fa-check-circle me-1"></i> Présent
-                                                    </label>
+    </div>
+
+    <?php if ($cours_id > 0 && $cours_info): ?>
+        <!-- Informations du cours et de l'enseignant -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="card-title mb-0"><i class="fas fa-info-circle"></i> Informations du Cours</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h4><?= htmlspecialchars($cours_info['nom'], ENT_QUOTES, 'UTF-8') ?> <small class="text-muted">(<?= htmlspecialchars($cours_info['code'], ENT_QUOTES, 'UTF-8') ?>)</small></h4>
+                                <?php if (!empty($cours_info['description'])): ?>
+                                    <p><?= nl2br(htmlspecialchars($cours_info['description'], ENT_QUOTES, 'UTF-8')) ?></p>
+                                <?php endif; ?>
+                                <div class="alert alert-info">
+                                    <strong>Date de présence:</strong> <?php echo date('d/m/Y', strtotime($date)); ?>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5 class="card-title mb-0"><i class="fas fa-chalkboard-teacher"></i> Enseignant</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <?php if ($cours_info['enseignant_id']): ?>
+                                            <div class="d-flex align-items-center">
+                                                <div class="teacher-avatar">
+                                                    <i class="fas fa-user-circle fa-3x"></i>
                                                 </div>
-                                                <div class="form-check form-check-inline">
-                                                    <input class="form-check-input" type="radio" 
-                                                           name="statut[<?php echo $etudiant['id']; ?>]" 
-                                                           id="absent-<?php echo $etudiant['id']; ?>" 
-                                                           value="absent" 
-                                                           <?php echo ($etudiant['statut'] === 'absent') ? 'checked' : ''; ?>>
-                                                    <label class="form-check-label text-danger" for="absent-<?php echo $etudiant['id']; ?>">
-                                                        <i class="fas fa-times-circle me-1"></i> Absent
-                                                    </label>
+                                                <div class="ms-3">
+                                                    <h5 class="mb-1"><?= htmlspecialchars($cours_info['enseignant_nom'] . ' ' . $cours_info['enseignant_prenom'], ENT_QUOTES, 'UTF-8') ?></h5>
+                                                    <p class="mb-0"><i class="fas fa-envelope"></i> <?= htmlspecialchars($cours_info['enseignant_email'], ENT_QUOTES, 'UTF-8') ?></p>
                                                 </div>
                                             </div>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                        <?php else: ?>
+                                            <div class="alert alert-warning mb-0">
+                                                <i class="fas fa-exclamation-triangle"></i> Aucun enseignant n'est assigné à ce cours.
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="mt-3 text-center">
-                        <button type="submit" name="enregistrer" value="1" class="btn btn-primary btn-lg">
-                            <i class="fas fa-save me-2"></i> Enregistrer la présence
-                        </button>
-                    </div>
-                </form>
-            <?php else: ?>
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Aucun étudiant n'est inscrit à ce cours. 
-                    <a href="ajouter_etudiant.php" class="alert-link">Ajouter des étudiants au cours</a>
                 </div>
-            <?php endif; ?>
+            </div>
         </div>
-    </div>
-<?php elseif ($cours_id > 0): ?>
-    <div class="alert alert-danger">
-        <i class="fas fa-exclamation-circle me-2"></i>
-        Le cours sélectionné n'existe pas ou a été supprimé.
-    </div>
-<?php else: ?>
-    <div class="alert alert-info">
-        <i class="fas fa-info-circle me-2"></i>
-        Veuillez sélectionner un cours et une date pour marquer les présences.
-    </div>
-<?php endif; ?>
+        
+        <div class="row mt-2">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-users"></i> 
+                            Liste des Étudiants Inscrits au Cours - <?= htmlspecialchars($cours_info['nom'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars($cours_info['code'], ENT_QUOTES, 'UTF-8') ?>) - 
+                            <?php echo date('d/m/Y', strtotime($date)); ?>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <?php if (empty($etudiants)): ?>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> Aucun étudiant inscrit à ce cours.
+                            </div>
+                        <?php else: ?>
+                            <form method="POST" action="presence.php" id="presenceForm">
+                                <input type="hidden" name="cours_id" value="<?php echo $cours_id; ?>">
+                                <input type="hidden" name="date" value="<?php echo $date; ?>">
+                                <input type="hidden" name="save_presence" value="1">
+                                
+                                <!-- Informations du jour -->
+                                <div class="day-info">
+                                    <i class="fas fa-calendar-day"></i>
+                                    <div class="day-details">
+                                        <div class="course-name"><?php echo htmlspecialchars($cours_info['nom'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                        <div class="date-info"><?php echo date('l, d F Y', strtotime($date)); ?></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Actions rapides -->
+                                <div class="quick-actions">
+                                    <div class="quick-action-btn" onclick="marquerTous(1)">
+                                        <i class="fas fa-check-circle"></i> Marquer tous présents
+                                    </div>
+                                    <div class="quick-action-btn" onclick="marquerTous(0)">
+                                        <i class="fas fa-times-circle"></i> Marquer tous absents
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info mb-3">
 
-<?php include 'includes/footer.php'; ?>
+                                </div>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Matricule</th>
+                                                
+                                                <th>Prénom</th>
+                                                <th>Présence</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($etudiants as $etudiant): ?>
+                                                <tr>
+
+    <td><?php echo htmlspecialchars($etudiant['matricule'], ENT_QUOTES, 'UTF-8') ?></td>
+    <td><strong><?php echo htmlspecialchars($etudiant['nom'], ENT_QUOTES, 'UTF-8') ?></strong></td>
+    <td><?php echo htmlspecialchars($etudiant['prenom'], ENT_QUOTES, 'UTF-8') ?></td>
+                                                    <td>
+                                                        <div class="presence-controls">
+                                                            <div class="presence-radio present">
+                                                                <input type="radio" 
+                                                                    name="presence[<?php echo $etudiant['id']; ?>]" 
+                                                                    id="present_<?php echo $etudiant['id']; ?>" 
+                                                                    value="present" 
+                                                                    <?php echo ($etudiant['statut'] === 'present' || $etudiant['statut'] === null) ? 'checked' : ''; ?>>
+                                                                <label for="present_<?php echo $etudiant['id']; ?>">
+                                                                    <i class="fas fa-check-circle"></i> Présent
+                                                                </label>
+                                                            </div>
+                                                            <div class="presence-radio absent">
+                                                                <input type="radio" 
+                                                                    name="presence[<?php echo $etudiant['id']; ?>]" 
+                                                                    id="absent_<?php echo $etudiant['id']; ?>" 
+                                                                    value="absent" 
+                                                                    <?php echo $etudiant['statut'] === 'absent' ? 'checked' : ''; ?>>
+                                                                <label for="absent_<?php echo $etudiant['id']; ?>">
+                                                                    <i class="fas fa-times-circle"></i> Absent
+                                                                </label>
+                                                            </div>
+                                                            <?php if ($etudiant['statut'] === 'absent' && $etudiant['justifie']): ?>
+                                                                <div class="mt-2">
+                                                                    <span class="badge bg-success"><i class="fas fa-check"></i> Absence justifiée</span>
+                                                                    <?php if (!empty($etudiant['justification'])): ?>
+                                                                        <button type="button" class="btn btn-sm btn-info ms-2" data-bs-toggle="modal" data-bs-target="#justificationModal<?php echo $etudiant['id']; ?>">
+                                                                            <i class="fas fa-eye"></i> Voir justification
+                                                                        </button>
+                                                                        
+                                                                        <!-- Modal pour afficher la justification -->
+                                                                        <div class="modal fade" id="justificationModal<?php echo $etudiant['id']; ?>" tabindex="-1" aria-hidden="true">
+                                                                            <div class="modal-dialog">
+                                                                                <div class="modal-content">
+                                                                                    <div class="modal-header bg-info text-white">
+                                                                                        <h5 class="modal-title">Justification d'absence</h5>
+                                                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                                                    </div>
+                                                                                    <div class="modal-body">
+                                                                                        <p><?php echo nl2br(htmlspecialchars($etudiant['justification'])); ?></p>
+                                                                                    </div>
+                                                                                    <div class="modal-footer">
+                                                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    <?php endif; ?>
+                                                                </div>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div class="row mt-4">
+                                    <div class="col-md-4">
+                                        <button type="button" class="btn btn-primary w-100" onclick="marquerTous(true)">
+                                            <i class="fas fa-check-circle"></i> Marquer tous présents
+                                        </button>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <button type="button" class="btn btn-warning w-100" onclick="marquerTous(false)">
+                                            <i class="fas fa-times-circle"></i> Marquer tous absents
+                                        </button>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <button type="submit" class="btn btn-success w-100">
+                                            <i class="fas fa-save"></i> Enregistrer les Présences
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <!-- Image décorative -->
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="card-title mb-0"><i class="fas fa-clipboard-check"></i> Gestion de Présence</h5>
+                    </div>
+                    <div class="card-body">
+                        <img src="assets/images/attendance.svg" alt="Gestion de présence" class="decorative-image">
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php else: ?>
+        <div class="row mt-4">
+            <!-- Image décorative -->
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="card-title mb-0"><i class="fas fa-clipboard-check"></i> Gestion de Présence</h5>
+                    </div>
+                    <div class="card-body">
+                        <img src="assets/images/attendance.svg" alt="Gestion de présence" class="decorative-image">
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+</div>
+
+<?php
+// Inclure le footer
+include 'includes/footer.php';
+?>
+
+<script>
+// Fonction pour marquer tous les étudiants comme présents ou absents
+function marquerTous(present) {
+    const radios = document.querySelectorAll('input[type="radio"]');
+    radios.forEach(radio => {
+        if ((present && radio.id.startsWith('present_')) || (!present && radio.id.startsWith('absent_'))) {
+            radio.checked = true;
+        }
+    });
+}
+</script>

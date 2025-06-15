@@ -1,175 +1,183 @@
 <?php
-// Page de gestion des cours
-require_once 'includes/db_connect.php';
+/**
+ * Page de gestion des cours
+ */
+
+// Inclure les fichiers nécessaires
 require_once 'includes/auth.php';
-require_once 'includes/functions.php';
+require_once 'config/database.php';
 
-// Vérifier si l'utilisateur est connecté
-verifierConnexion();
+// Vérifier l'authentification
+require_auth();
 
-// Gestion des actions
-if (isset($_GET['action'])) {
-    $action = $_GET['action'];
+// Supprimer un cours
+if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
+    $id = (int)$_GET['id'];
     
-    // Suppression d'un cours
-    if ($action === 'supprimer' && isset($_GET['id'])) {
-        $id = intval($_GET['id']);
-        try {
-            $stmt = $pdo->prepare("DELETE FROM cours WHERE id = :id");
-            $stmt->execute(['id' => $id]);
-            
-            $_SESSION['message_succes'] = "Le cours a été supprimé avec succès.";
-        } catch (PDOException $e) {
-            $_SESSION['message_erreur'] = "Erreur lors de la suppression du cours.";
-        }
+    // Vérifier si le cours existe
+    $cours = db_query_single("SELECT * FROM cours WHERE id = ?", [$id]);
+    
+    if ($cours) {
+        // Supprimer d'abord les inscriptions et présences associées
+        db_exec("DELETE FROM inscriptions WHERE cours_id = ?", [$id]);
+        db_exec("DELETE FROM presences WHERE cours_id = ?", [$id]);
         
-        // Redirection pour éviter la réexécution du code en cas de rafraîchissement
-        header('Location: cours.php');
-        exit();
-    }
-}
-
-// Récupération des cours
-try {
-    $recherche = isset($_GET['recherche']) ? $_GET['recherche'] : '';
-    
-    if (!empty($recherche)) {
-        $stmt = $pdo->prepare("
-            SELECT c.*, 
-                  CONCAT(u.prenom, ' ', u.nom) as nom_enseignant,
-                  (SELECT COUNT(*) FROM inscriptions WHERE cours_id = c.id) as nb_etudiants,
-                  (SELECT COUNT(DISTINCT date_presence) FROM presences WHERE cours_id = c.id) as nb_seances
-            FROM cours c
-            LEFT JOIN utilisateurs u ON c.enseignant_id = u.id
-            WHERE c.nom LIKE :recherche OR c.code LIKE :recherche OR CONCAT(u.prenom, ' ', u.nom) LIKE :recherche
-            ORDER BY c.nom
-        ");
-        $stmt->execute(['recherche' => "%$recherche%"]);
+        // Puis supprimer le cours
+        if (db_exec("DELETE FROM cours WHERE id = ?", [$id])) {
+            alerte("Le cours a été supprimé avec succès.", "success");
+        } else {
+            alerte("Erreur lors de la suppression du cours.", "danger");
+        }
     } else {
-        $stmt = $pdo->query("
-            SELECT c.*, 
-                  CONCAT(u.prenom, ' ', u.nom) as nom_enseignant,
-                  (SELECT COUNT(*) FROM inscriptions WHERE cours_id = c.id) as nb_etudiants,
-                  (SELECT COUNT(DISTINCT date_presence) FROM presences WHERE cours_id = c.id) as nb_seances
-            FROM cours c
-            LEFT JOIN utilisateurs u ON c.enseignant_id = u.id
-            ORDER BY c.nom
-        ");
+        alerte("Cours introuvable.", "danger");
     }
     
-    $cours = $stmt->fetchAll();
-} catch (PDOException $e) {
-    $_SESSION['message_erreur'] = "Erreur lors de la récupération des cours: " . $e->getMessage();
-    $cours = [];
+    rediriger('cours.php');
 }
 
-// Inclure l'en-tête
+// Récupérer la liste des cours avec l'enseignant et le nombre d'étudiants
+$cours = db_query("
+    SELECT c.*, 
+           u.nom as enseignant_nom, 
+           u.prenom as enseignant_prenom,
+           COUNT(DISTINCT i.etudiant_id) as nb_etudiants
+    FROM cours c
+    LEFT JOIN utilisateurs u ON c.enseignant_id = u.id AND u.role = 'enseignant'
+    LEFT JOIN inscriptions i ON c.id = i.cours_id
+    GROUP BY c.id, c.nom, c.code, c.description, c.enseignant_id, u.nom, u.prenom
+    ORDER BY c.nom
+");
+
+// Inclure le header
 include 'includes/header.php';
 ?>
-
-<!-- Page Heading -->
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Gestion des Cours</h1>
-    <a href="ajouter_cours.php" class="d-none d-sm-inline-block btn btn-primary shadow-sm">
-        <i class="fas fa-plus fa-sm text-white-50 me-2"></i> Ajouter un cours
-    </a>
+<link rel="stylesheet" href="assets/css/global-modern.css?v=<?= time() ?>">
+<style>
+.courses-full-bg {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.courses-full-bg img {
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  opacity: 0.18;
+  filter: blur(2.5px) grayscale(0.1);
+}
+.page-hero, .container-fluid, .modern-card, .modern-table, .modern-btn, .btn-modern {
+  position: relative;
+  z-index: 2;
+}
+body.theme-cours { background: #fff; }
+</style>
+<div class="courses-full-bg">
+    <img src="Nouveau dossier/Capterra-creation-cours-en-ligne.png" alt="Cours en ligne - arrière-plan décoratif">
+</div>
+<div class="page-hero">
+    <img src="assets/images/courses.svg" alt="Cours Universitaires" class="page-hero-img">
+    <h1 class="page-hero-title"><i class="fas fa-book"></i> Gestion des Cours</h1>
 </div>
 
-<!-- Filtres et recherche -->
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Recherche de cours</h6>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2"><i class="fas fa-book"></i> Gestion des Cours</h1>
+        <div>
+            <a href="ajouter_cours.php" class="modern-btn btn btn-primary">
+                <i class="fas fa-plus-circle"></i> Ajouter un Cours
+            </a>
+        </div>
     </div>
-    <div class="card-body">
-        <form action="" method="GET" class="row g-3">
-            <div class="col-md-6">
-                <div class="input-group">
-                    <input type="text" class="form-control" name="recherche" placeholder="Rechercher par nom, code ou enseignant..." value="<?php echo echapper($recherche); ?>">
-                    <button class="btn btn-primary" type="submit">
-                        <i class="fas fa-search"></i>
-                    </button>
+
+    <div class="modern-card card">
+        <div class="card-header bg-dark text-white">
+            <h5 class="card-title mb-0"><i class="fas fa-list"></i> Liste des Cours</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="modern-table table table-striped table-hover data-table">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Code</th>
+                            <th>Nom du Cours</th>
+                            <th>Enseignant</th>
+                            <th>Étudiants</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($cours)): ?>
+                            <tr>
+                                <td colspan="5" class="text-center">Aucun cours enregistré.</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($cours as $c): ?>
+                                <tr>
+                                    <td><span class="badge bg-primary"><?= htmlspecialchars($c['code']) ?></span></td>
+                                    <td>
+                                        <strong><?= htmlspecialchars($c['nom']) ?></strong>
+                                        <?php if (!empty($c['description'])): ?>
+                                            <button class="modern-btn btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="<?= htmlspecialchars($c['description']) ?>">
+                                                <i class="fas fa-info-circle"></i>
+                                            </button>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($c['enseignant_id']): ?>
+                                            <?= htmlspecialchars($c['enseignant_nom'] . ' ' . $c['enseignant_prenom']) ?>
+                                        <?php else: ?>
+                                            <span class="badge bg-warning text-dark">Non assigné</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-user-graduate"></i> <?= $c['nb_etudiants'] ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex justify-content-center gap-2">
+                                            <a href="liste_etudiants.php?cours_id=<?= $c['id'] ?>" class="modern-btn btn btn-sm btn-outline-info" title="Liste des étudiants">
+                                                <i class="fas fa-users"></i>
+                                            </a>
+                                            <a href="presence.php?cours_id=<?= $c['id'] ?>" class="modern-btn btn btn-sm btn-outline-success" title="Marquer les présences">
+                                                <i class="fas fa-clipboard-check"></i>
+                                            </a>
+                                            <a href="ajouter_cours.php?id=<?= $c['id'] ?>" class="modern-btn btn btn-sm btn-outline-primary" title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="cours.php?action=delete&id=<?= $c['id'] ?>" class="btn btn-sm btn-outline-danger btn-delete" title="Supprimer">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <!-- Image décorative -->
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="card-title mb-0"><i class="fas fa-book"></i> Représentation des Cours</h5>
+                </div>
+                <div class="card-body">
+                    <img src="assets/images/courses.svg" alt="Représentation visuelle des cours" class="decorative-image">
                 </div>
             </div>
-            <div class="col-md-6 text-md-end">
-                <?php if (!empty($recherche)): ?>
-                    <a href="cours.php" class="btn btn-outline-secondary">Réinitialiser</a>
-                <?php endif; ?>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Liste des cours -->
-<div class="card shadow mb-4">
-    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-        <h6 class="m-0 font-weight-bold text-primary">Liste des cours</h6>
-        <div class="dropdown no-arrow">
-            <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="dropdownMenuLink">
-                <li><a class="dropdown-item" href="rapports.php?type=cours">Voir le rapport</a></li>
-                <li><a class="dropdown-item" href="#" onclick="window.print()">Imprimer la liste</a></li>
-            </ul>
-        </div>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
-                <thead>
-                    <tr>
-                        <th>Code</th>
-                        <th>Nom du cours</th>
-                        <th>Enseignant</th>
-                        <th>Étudiants</th>
-                        <th>Séances</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (count($cours) > 0): ?>
-                        <?php foreach ($cours as $c): ?>
-                            <tr>
-                                <td><?php echo echapper($c['code']); ?></td>
-                                <td><?php echo echapper($c['nom']); ?></td>
-                                <td>
-                                    <?php if (!empty($c['nom_enseignant'])): ?>
-                                        <?php echo echapper($c['nom_enseignant']); ?>
-                                    <?php else: ?>
-                                        <span class="text-muted">Non assigné</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <span class="badge bg-primary text-white"><?php echo $c['nb_etudiants']; ?></span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-info text-white"><?php echo $c['nb_seances']; ?></span>
-                                </td>
-                                <td>
-                                    <a href="ajouter_cours.php?id=<?php echo $c['id']; ?>" class="btn btn-sm btn-info btn-action" title="Modifier">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="cours.php?action=supprimer&id=<?php echo $c['id']; ?>" class="btn btn-sm btn-danger btn-action btn-delete" title="Supprimer">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
-                                    <a href="presence.php?cours_id=<?php echo $c['id']; ?>" class="btn btn-sm btn-success btn-action" title="Marquer présence">
-                                        <i class="fas fa-clipboard-check"></i>
-                                    </a>
-                                    <a href="rapports.php?cours_id=<?php echo $c['id']; ?>" class="btn btn-sm btn-primary btn-action" title="Rapport de présence">
-                                        <i class="fas fa-chart-bar"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="6" class="text-center">Aucun cours trouvé.</td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
         </div>
     </div>
 </div>
 
-<?php include 'includes/footer.php'; ?>
+<?php
+// Inclure le footer
+include 'includes/footer.php';
+?>

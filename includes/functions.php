@@ -1,378 +1,221 @@
 <?php
-// Fonctions utilitaires pour le système de gestion de présence
+/**
+ * Fichier de fonctions utilitaires
+ * Ce fichier contient des fonctions utilisées dans l'ensemble de l'application
+ */
 
-// Échapper les données pour éviter les injections HTML/JS
-function echapper($data) {
-    return htmlspecialchars($data, ENT_QUOTES, 'UTF-8');
+// S'assurer que la session est démarrée
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-// Fonction pour formater une date au format français
-function formaterDate($date) {
-    if (!$date) return '';
-    $dateObj = new DateTime($date);
-    return $dateObj->format('d/m/Y');
+/**
+ * Vérifie si l'utilisateur est connecté
+ * 
+ * @return bool True si connecté, sinon false
+ */
+function est_connecte() {
+    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
 }
 
-// Fonction pour formater une date avec l'heure au format français
-function formaterDateHeure($dateHeure) {
-    if (!$dateHeure) return '';
-    $dateObj = new DateTime($dateHeure);
-    return $dateObj->format('d/m/Y à H:i');
+/**
+ * Redirige l'utilisateur vers une page donnée
+ * 
+ * @param string $page La page de destination
+ */
+function rediriger($page) {
+    header("Location: $page");
+    exit;
 }
 
-// Fonction pour obtenir le nombre total d'étudiants
-function obtenirNombreEtudiants($pdo) {
+/**
+ * Sécurise les données entrées par l'utilisateur
+ * 
+ * @param string $data Les données à sécuriser
+ * @return string Les données sécurisées
+ */
+function securiser($data) {
+    $data = trim($data);
+    $data = stripslashes($data);
+    $data = htmlspecialchars($data);
+    return $data;
+}
+
+
+function alerte($message, $type = 'info') {
+    $_SESSION['alerte'] = [
+        'message' => $message,
+        'type' => $type
+    ];
+}
+
+/**
+ * Affiche les messages d'alerte et les supprime ensuite
+ */
+function afficher_alertes() {
+    if (isset($_SESSION['alerte'])) {
+        echo '<div class="alert alert-' . $_SESSION['alerte']['type'] . ' alert-dismissible fade show" role="alert">';
+        echo $_SESSION['alerte']['message'];
+        echo '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>';
+        echo '</div>';
+        unset($_SESSION['alerte']);
+    }
+}
+
+/**
+ * Formate la date en français
+ * 
+ * @param string $date La date à formater (format de base: Y-m-d)
+ * @return string La date formatée en français
+ */
+function formater_date($date) {
+    if (empty($date)) return '';
+    $timestamp = strtotime($date);
+    $jours = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    $mois = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    
+    $jour_semaine = $jours[date('w', $timestamp)];
+    $jour = date('j', $timestamp);
+    $mois_chiffre = date('n', $timestamp);
+    $mois_nom = $mois[$mois_chiffre - 1];
+    $annee = date('Y', $timestamp);
+    
+    return "$jour_semaine $jour $mois_nom $annee";
+}
+
+/**
+ * Génère un identifiant unique pour un étudiant
+ * 
+ * @return string Identifiant étudiant au format 'ETU-YYYYNNNNN'
+ */
+function generer_id_etudiant() {
+    $annee = date('Y');
+    $nombre = mt_rand(10000, 99999);
+    return "ETU-{$annee}{$nombre}";
+}
+
+/**
+ * Vérifie si un email existe déjà dans la base de données
+ * 
+ * @param string $email L'email à vérifier
+ * @param string $table La table dans laquelle chercher
+ * @param int $id Exclure cet ID de la recherche (pour mise à jour)
+ * @return bool True si l'email existe, sinon false
+ */
+function email_existe($email, $table, $id = null) {
     try {
-        // Vérifier si nous sommes en mode démo
-        if (get_class($pdo) === 'PDO' && $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
-            return genererStatistiquesDemo()['etudiants'];
+        if ($id) {
+            $result = db_query_single("SELECT id FROM $table WHERE email = ? AND id != ?", [$email, $id]);
+        } else {
+            $result = db_query_single("SELECT id FROM $table WHERE email = ?", [$email]);
         }
-        
-        $stmt = $pdo->query("SELECT COUNT(*) as total FROM etudiants");
-        $resultat = $stmt->fetch();
-        return $resultat['total'];
-    } catch (PDOException $e) {
-        return 25; // Valeur de démo
-    }
-}
-
-// Fonction pour obtenir le nombre total de cours
-function obtenirNombreCours($pdo) {
-    try {
-        // Vérifier si nous sommes en mode démo
-        if (get_class($pdo) === 'PDO' && $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
-            return genererStatistiquesDemo()['cours'];
-        }
-        
-        $stmt = $pdo->query("SELECT COUNT(*) as total FROM cours");
-        $resultat = $stmt->fetch();
-        return $resultat['total'];
-    } catch (PDOException $e) {
-        return 8; // Valeur de démo
-    }
-}
-
-// Fonction pour obtenir le nombre de présences aujourd'hui
-function obtenirPresencesAujourdhui($pdo) {
-    try {
-        // Vérifier si nous sommes en mode démo
-        if (get_class($pdo) === 'PDO' && $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
-            return genererStatistiquesDemo()['presences_jour'];
-        }
-        
-        // Adapté pour MySQL: CURDATE()
-        $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM presences WHERE date_presence = CURDATE() AND statut = 'present'");
-        $stmt->execute();
-        $resultat = $stmt->fetch();
-        return $resultat['total'];
-    } catch (PDOException $e) {
-        return 18; // Valeur de démo
-    }
-}
-
-// Fonction pour obtenir le nombre d'absences aujourd'hui
-function obtenirAbsencesAujourdhui($pdo) {
-    try {
-        // Vérifier si nous sommes en mode démo
-        if (get_class($pdo) === 'PDO' && $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
-            return genererStatistiquesDemo()['absences_jour'];
-        }
-        
-        // Adapté pour MySQL: CURDATE()
-        $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM presences WHERE date_presence = CURDATE() AND statut = 'absent'");
-        $stmt->execute();
-        $resultat = $stmt->fetch();
-        return $resultat['total'];
-    } catch (PDOException $e) {
-        return 7; // Valeur de démo
-    }
-}
-
-// Fonction pour obtenir tous les cours
-function obtenirTousLesCours($pdo) {
-    try {
-        // Adapté pour MySQL: CONCAT() pour la concaténation
-        $stmt = $pdo->query("
-            SELECT c.*, CONCAT(u.prenom, ' ', u.nom) as nom_enseignant 
-            FROM cours c
-            LEFT JOIN utilisateurs u ON c.enseignant_id = u.id
-            ORDER BY c.nom ASC
-        ");
-        return $stmt->fetchAll();
-    } catch (PDOException $e) {
-        return [];
-    }
-}
-
-// Fonction pour obtenir un cours par ID
-function obtenirCoursParId($pdo, $id) {
-    try {
-        // Adapté pour MySQL: CONCAT() pour la concaténation
-        $stmt = $pdo->prepare("
-            SELECT c.*, CONCAT(u.prenom, ' ', u.nom) as nom_enseignant 
-            FROM cours c
-            LEFT JOIN utilisateurs u ON c.enseignant_id = u.id
-            WHERE c.id = :id
-        ");
-        $stmt->execute(['id' => $id]);
-        return $stmt->fetch();
-    } catch (PDOException $e) {
-        return null;
-    }
-}
-
-// Fonction pour obtenir tous les étudiants
-function obtenirTousLesEtudiants($pdo) {
-    try {
-        $stmt = $pdo->query("SELECT * FROM etudiants ORDER BY nom, prenom");
-        return $stmt->fetchAll();
-    } catch (PDOException $e) {
-        return [];
-    }
-}
-
-// Fonction pour obtenir un étudiant par ID
-function obtenirEtudiantParId($pdo, $id) {
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM etudiants WHERE id = :id");
-        $stmt->execute(['id' => $id]);
-        return $stmt->fetch();
-    } catch (PDOException $e) {
-        return null;
-    }
-}
-
-// Fonction pour obtenir les cours d'un étudiant
-function obtenirCoursEtudiant($pdo, $etudiantId) {
-    try {
-        $stmt = $pdo->prepare("
-            SELECT c.* 
-            FROM cours c
-            JOIN inscriptions i ON c.id = i.cours_id
-            WHERE i.etudiant_id = :etudiantId
-        ");
-        $stmt->execute(['etudiantId' => $etudiantId]);
-        return $stmt->fetchAll();
-    } catch (PDOException $e) {
-        return [];
-    }
-}
-
-// Fonction pour obtenir les étudiants inscrits à un cours
-function obtenirEtudiantsCours($pdo, $coursId) {
-    try {
-        $stmt = $pdo->prepare("
-            SELECT e.* 
-            FROM etudiants e
-            JOIN inscriptions i ON e.id = i.etudiant_id
-            WHERE i.cours_id = :coursId
-            ORDER BY e.nom, e.prenom
-        ");
-        $stmt->execute(['coursId' => $coursId]);
-        return $stmt->fetchAll();
-    } catch (PDOException $e) {
-        return [];
-    }
-}
-
-// Fonction pour vérifier si un étudiant est inscrit à un cours
-function estInscritAuCours($pdo, $etudiantId, $coursId) {
-    try {
-        $stmt = $pdo->prepare("
-            SELECT COUNT(*) as total
-            FROM inscriptions 
-            WHERE etudiant_id = :etudiantId AND cours_id = :coursId
-        ");
-        $stmt->execute([
-            'etudiantId' => $etudiantId,
-            'coursId' => $coursId
-        ]);
-        $resultat = $stmt->fetch();
-        return $resultat['total'] > 0;
-    } catch (PDOException $e) {
+        // Si un résultat est retourné, l'email existe déjà
+        return $result !== false;
+    } catch (Exception $e) {
+        // En cas d'erreur, considérer que l'email n'existe pas
+        error_log("Erreur lors de la vérification de l'email: " . $e->getMessage());
         return false;
     }
 }
 
-// Fonction pour obtenir les présences d'un cours à une date spécifique
-function obtenirPresencesCours($pdo, $coursId, $date) {
-    try {
-        $stmt = $pdo->prepare("
-            SELECT p.*, e.matricule, e.nom, e.prenom 
-            FROM presences p
-            JOIN etudiants e ON p.etudiant_id = e.id
-            WHERE p.cours_id = :coursId AND p.date_presence = :date
-            ORDER BY e.nom, e.prenom
-        ");
-        $stmt->execute([
-            'coursId' => $coursId,
-            'date' => $date
-        ]);
-        return $stmt->fetchAll();
-    } catch (PDOException $e) {
-        return [];
-    }
-}
-
-// Fonction pour obtenir les statistiques de présence pour un cours
-function obtenirStatistiquesCours($pdo, $coursId) {
-    try {
-        $stmt = $pdo->prepare("
-            SELECT 
-                SUM(CASE WHEN statut = 'present' THEN 1 ELSE 0 END) as total_present,
-                SUM(CASE WHEN statut = 'absent' THEN 1 ELSE 0 END) as total_absent,
-                COUNT(*) as total
-            FROM presences
-            WHERE cours_id = :coursId
-        ");
-        $stmt->execute(['coursId' => $coursId]);
-        return $stmt->fetch();
-    } catch (PDOException $e) {
-        return [
-            'total_present' => 0,
-            'total_absent' => 0,
-            'total' => 0
-        ];
-    }
-}
-
-// Fonction pour obtenir les statistiques de présence pour un étudiant
-function obtenirStatistiquesEtudiant($pdo, $etudiantId) {
-    try {
-        $stmt = $pdo->prepare("
-            SELECT 
-                SUM(CASE WHEN statut = 'present' THEN 1 ELSE 0 END) as total_present,
-                SUM(CASE WHEN statut = 'absent' THEN 1 ELSE 0 END) as total_absent,
-                COUNT(*) as total
-            FROM presences
-            WHERE etudiant_id = :etudiantId
-        ");
-        $stmt->execute(['etudiantId' => $etudiantId]);
-        return $stmt->fetch();
-    } catch (PDOException $e) {
-        return [
-            'total_present' => 0,
-            'total_absent' => 0,
-            'total' => 0
-        ];
-    }
-}
-
-// Fonction pour obtenir les statistiques globales de présence
-function obtenirStatistiquesGlobales($pdo) {
-    try {
-        // Vérifier si nous sommes en mode démo
-        if (get_class($pdo) === 'PDO' && $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
-            $stats = genererStatistiquesDemo();
-            return [
-                'total_present' => $stats['total_present'],
-                'total_absent' => $stats['total_absent'],
-                'total' => $stats['total_present'] + $stats['total_absent']
-            ];
+/**
+ * Calcule les statistiques de présence pour un étudiant
+ * 
+ * @param int $etudiant_id L'ID de l'étudiant
+ * @return array Les statistiques
+ */
+function stats_presence_etudiant($etudiant_id) {
+    $presences = db_query("SELECT est_present FROM presences WHERE etudiant_id = ?", [$etudiant_id]);
+    $total = count($presences);
+    $present = 0;
+    
+    foreach ($presences as $p) {
+        if ($p['est_present'] == true || $p['est_present'] == 't' || $p['est_present'] == '1' || $p['est_present'] === true) {
+            $present++;
         }
-        
-        $stmt = $pdo->query("
-            SELECT 
-                SUM(CASE WHEN statut = 'present' THEN 1 ELSE 0 END) as total_present,
-                SUM(CASE WHEN statut = 'absent' THEN 1 ELSE 0 END) as total_absent,
-                COUNT(*) as total
-            FROM presences
-        ");
-        return $stmt->fetch();
-    } catch (PDOException $e) {
-        return [
-            'total_present' => 342,
-            'total_absent' => 86,
-            'total' => 428
-        ];
-    }
-}
-
-// Fonction pour obtenir les statistiques de présence par mois
-function obtenirStatistiquesParMois($pdo, $annee = null) {
-    if (!$annee) {
-        $annee = date('Y');
     }
     
-    try {
-        // Vérifier si nous sommes en mode démo
-        if (get_class($pdo) === 'PDO' && $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
-            // Générer des données de démonstration pour les mois
-            $resultat = [];
-            
-            // Créer des données pour chaque mois de l'année
-            for ($i = 0; $i < 12; $i++) {
-                // Générer des nombres aléatoires mais cohérents
-                $present = rand(20, 40);
-                $absent = rand(2, 8);
-                
-                $resultat[] = [
-                    'mois' => $i + 1,
-                    'present' => $present,
-                    'absent' => $absent
-                ];
-            }
-            
-            return $resultat;
-        }
-        
-        // Adapté pour MySQL: utilisation de MONTH() et YEAR()
-        $stmt = $pdo->prepare("
-            SELECT 
-                MONTH(date_presence) as mois,
-                SUM(CASE WHEN statut = 'present' THEN 1 ELSE 0 END) as present,
-                SUM(CASE WHEN statut = 'absent' THEN 1 ELSE 0 END) as absent
-            FROM presences
-            WHERE YEAR(date_presence) = :annee
-            GROUP BY MONTH(date_presence)
-            ORDER BY MONTH(date_presence)
-        ");
-        $stmt->execute(['annee' => $annee]);
-        return $stmt->fetchAll();
-    } catch (PDOException $e) {
-        // Générer des données de démo en cas d'erreur
-        $resultat = [];
-        for ($i = 0; $i < 12; $i++) {
-            $present = rand(20, 40);
-            $absent = rand(2, 8);
-            
-            $resultat[] = [
-                'mois' => $i + 1,
-                'present' => $present,
-                'absent' => $absent
-            ];
-        }
-        
-        return $resultat;
-    }
+    $absent = $total - $present;
+    $taux = $total > 0 ? round(($present / $total) * 100) : 0;
+    
+    return [
+        'total' => $total,
+        'present' => $present,
+        'absent' => $absent,
+        'taux' => $taux
+    ];
 }
 
-// Fonction pour obtenir un utilisateur par son ID
-function obtenirUtilisateurParId($pdo, $id) {
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM utilisateurs WHERE id = :id");
-        $stmt->execute(['id' => $id]);
-        return $stmt->fetch();
-    } catch (PDOException $e) {
-        return null;
-    }
+/**
+ * Calcule les statistiques globales de présence
+ * 
+ * @return array Les statistiques
+ */
+function stats_presence_globales() {
+    $aujourd_hui = date('Y-m-d');
+    
+    // Présences aujourd'hui
+    $presences_auj = db_query("SELECT COUNT(*) as total FROM presences WHERE date = ? AND est_present = TRUE", [$aujourd_hui]);
+    $present_auj = $presences_auj[0]['total'] ?? 0;
+    
+    // Absences aujourd'hui  
+    $absences_auj = db_query("SELECT COUNT(*) as total FROM presences WHERE date = ? AND est_present = FALSE", [$aujourd_hui]);
+    $absent_auj = $absences_auj[0]['total'] ?? 0;
+    
+    // Total étudiants
+    $etudiants = db_query("SELECT COUNT(*) as total FROM etudiants");
+    $total_etudiants = $etudiants[0]['total'] ?? 0;
+    
+    // Total cours
+    $cours = db_query("SELECT COUNT(*) as total FROM cours");
+    $total_cours = $cours[0]['total'] ?? 0;
+    
+    return [
+        'present_auj' => $present_auj,
+        'absent_auj' => $absent_auj,
+        'total_etudiants' => $total_etudiants,
+        'total_cours' => $total_cours
+    ];
 }
 
-// Fonction pour obtenir tous les enseignants
-function obtenirTousLesEnseignants($pdo) {
-    try {
-        $stmt = $pdo->query("SELECT id, nom, prenom FROM utilisateurs WHERE role = 'enseignant' ORDER BY nom, prenom");
-        return $stmt->fetchAll();
-    } catch (PDOException $e) {
-        return [];
+/**
+ * Obtient les données pour le graphique de présence
+ * 
+ * @param int $cours_id L'ID du cours (optionnel)
+ * @param string $date_debut Date de début (optionnel)
+ * @param string $date_fin Date de fin (optionnel)
+ * @return array Les données pour le graphique
+ */
+function donnees_graphique_presence($cours_id = null, $date_debut = null, $date_fin = null) {
+    $params = [];
+    $sql = "SELECT date, 
+            SUM(CASE WHEN est_present = TRUE THEN 1 ELSE 0 END) as presents, 
+            SUM(CASE WHEN est_present = FALSE THEN 1 ELSE 0 END) as absents
+            FROM presences";
+    
+    $conditions = [];
+    
+    if ($cours_id) {
+        $conditions[] = "cours_id = ?";
+        $params[] = $cours_id;
     }
-}
-
-// Générer un message d'alerte (bootstrap)
-function afficherAlerte($message, $type = 'success') {
-    return '<div class="alert alert-' . $type . ' alert-dismissible fade show" role="alert">
-                ' . $message . '
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
-            </div>';
+    
+    if ($date_debut) {
+        $conditions[] = "date >= ?";
+        $params[] = $date_debut;
+    }
+    
+    if ($date_fin) {
+        $conditions[] = "date <= ?";
+        $params[] = $date_fin;
+    }
+    
+    if (!empty($conditions)) {
+        $sql .= " WHERE " . implode(" AND ", $conditions);
+    }
+    
+    $sql .= " GROUP BY date ORDER BY date";
+    
+    return db_query($sql, $params);
 }
 ?>

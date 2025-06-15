@@ -1,60 +1,38 @@
-<div class="position-sticky pt-3">
-    <ul class="nav flex-column">
-        <li class="nav-item">
-            <a class="nav-link text-white <?php echo (basename($_SERVER['PHP_SELF']) == 'dashboard.php') ? 'active' : ''; ?>" href="dashboard.php">
-                <i class="fas fa-tachometer-alt me-2"></i>
-                Tableau de Bord
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link text-white <?php echo (basename($_SERVER['PHP_SELF']) == 'etudiants.php') ? 'active' : ''; ?>" href="etudiants.php">
-                <i class="fas fa-user-graduate me-2"></i>
-                Étudiants
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link text-white <?php echo (basename($_SERVER['PHP_SELF']) == 'cours.php') ? 'active' : ''; ?>" href="cours.php">
-                <i class="fas fa-book me-2"></i>
-                Cours
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link text-white <?php echo (basename($_SERVER['PHP_SELF']) == 'presence.php') ? 'active' : ''; ?>" href="presence.php">
-                <i class="fas fa-clipboard-check me-2"></i>
-                Marquer Présence
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link text-white <?php echo (basename($_SERVER['PHP_SELF']) == 'rapports.php') ? 'active' : ''; ?>" href="rapports.php">
-                <i class="fas fa-chart-bar me-2"></i>
-                Rapports
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link text-white <?php echo (basename($_SERVER['PHP_SELF']) == 'profil.php') ? 'active' : ''; ?>" href="profil.php">
-                <i class="fas fa-user-circle me-2"></i>
-                Profil
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link text-white" href="deconnexion.php">
-                <i class="fas fa-sign-out-alt me-2"></i>
-                Déconnexion
-            </a>
-        </li>
+<div class="sidebar">
+    <div class="sidebar-header">
+        <div class="sidebar-logo">
+            <i class="fas fa-graduation-cap"></i>
+            <span>Gestion Présence</span>
+        </div>
+        <div class="user-info">
+            <span class="user-role"><?php echo $_SESSION['user_role'] === 'admin' ? 'Administrateur' : 'Enseignant'; ?></span>
+        </div>
+    </div>
+    <ul>
+        <li><a href="accueil.php" <?php echo basename($_SERVER['PHP_SELF']) === 'accueil.php' ? 'class="active"' : ''; ?>><i class="fas fa-home"></i> Accueil</a></li>
+        
+        <?php if ($_SESSION['user_role'] === 'admin'): ?>
+        <!-- Options réservées aux administrateurs -->
+        <li><a href="etudiants.php" <?php echo basename($_SERVER['PHP_SELF']) === 'etudiants.php' ? 'class="active"' : ''; ?>><i class="fas fa-user-graduate"></i> Étudiants</a></li>
+        <li><a href="enseignants.php" <?php echo basename($_SERVER['PHP_SELF']) === 'enseignants.php' ? 'class="active"' : ''; ?>><i class="fas fa-chalkboard-teacher"></i> Enseignants</a></li>
+        <li><a href="cours.php" <?php echo basename($_SERVER['PHP_SELF']) === 'cours.php' ? 'class="active"' : ''; ?>><i class="fas fa-book"></i> Tous les Cours</a></li>
+        <?php else: ?>
+        <!-- Options pour les enseignants -->
+        <li><a href="mes_cours.php" <?php echo basename($_SERVER['PHP_SELF']) === 'mes_cours.php' ? 'class="active"' : ''; ?>><i class="fas fa-book"></i> Mes Cours</a></li>
+        <?php endif; ?>
+        
+        <!-- Options communes -->
+        <li><a href="presence.php" <?php echo basename($_SERVER['PHP_SELF']) === 'presence.php' ? 'class="active"' : ''; ?>><i class="fas fa-clipboard-check"></i> Marquer Présence</a></li>
+        <li><a href="rapports.php" <?php echo basename($_SERVER['PHP_SELF']) === 'rapports.php' ? 'class="active"' : ''; ?>><i class="fas fa-chart-bar"></i> Rapports</a></li>
+        
+        <li><a href="gestion_justifications.php" <?php echo basename($_SERVER['PHP_SELF']) === 'gestion_justifications.php' ? 'class="active"' : ''; ?>><i class="fas fa-file-medical-alt"></i> Gestion Justifications</a></li>
+        
+        <?php if ($_SESSION['user_role'] === 'admin'): ?>
+        <li><a href="etudiants_exclus.php" <?php echo basename($_SERVER['PHP_SELF']) === 'etudiants_exclus.php' ? 'class="active"' : ''; ?>><i class="fas fa-user-slash"></i> Étudiants Exclus</a></li>
+        <?php endif; ?>
+        
+        <li><a href="justifier_absence.php" target="_blank"><i class="fas fa-clipboard-list"></i> Justification d'absence</a></li>
+        
+        <li class="sidebar-divider"><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
     </ul>
-    
-    <?php if(isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-        <span>Administration</span>
-    </h6>
-    <ul class="nav flex-column mb-2">
-        <li class="nav-item">
-            <a class="nav-link text-white" href="gestion_utilisateurs.php">
-                <i class="fas fa-users-cog me-2"></i>
-                Gestion Utilisateurs
-            </a>
-        </li>
-    </ul>
-    <?php endif; ?>
 </div>
