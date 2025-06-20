@@ -30,9 +30,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (db_exec($sql, [$nom_cours, $_SESSION['user_id'], $token, $expiration])) {
             $seance_id = db_last_insert_id();
             
-            // URL pour le QR code
-            $base_url = "http://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME']);
-            $qr_url = $base_url . "/presence_qr.php?seance=" . $seance_id . "&token=" . $token;
+            // URL pour le QR code - Configuration réseau local
+            require_once 'config_reseau.php';
+            $qr_url = URL_BASE_QR . "/presence_qr.php?seance=" . $seance_id . "&token=" . $token;
             
             // Rediriger vers la page d'affichage du QR
             header("Location: afficher_qr.php?seance=" . $seance_id);

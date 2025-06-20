@@ -28,9 +28,9 @@ if (!$seance) {
 // Vérifier si la séance est encore active
 $est_active = strtotime($seance['expiration']) > time();
 
-// URL pour le QR code
-$base_url = "http://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME']);
-$qr_url = $base_url . "/presence_qr.php?seance=" . $seance_id . "&token=" . $seance['token'];
+// URL pour le QR code - Configuration réseau local
+require_once 'config_reseau.php';
+$qr_url = URL_BASE_QR . "/presence_qr.php?seance=" . $seance_id . "&token=" . $seance['token'];
 
 // Récupérer les présences pour cette séance
 $sql_presences = "SELECT COUNT(*) as total FROM presences WHERE cours_id = ? AND date_presence = CURRENT_DATE";
