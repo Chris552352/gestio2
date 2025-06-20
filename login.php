@@ -1,9 +1,4 @@
 <?php
-/**
- * Page de connexion
- */
-
-// Démarrer la session
 session_start();
 
 // Inclure les fichiers nécessaires
@@ -23,7 +18,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Validation des champs
     $erreurs = [];
-    
     if (empty($email)) {
         $erreurs[] = "L'adresse email est requise.";
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -34,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $erreurs[] = "Le mot de passe est requis.";
     }
     
-    // Si aucune erreur, tenter la connexion
+    
     if (empty($erreurs)) {
         if (connecter($email, $password)) {
             alerte("Bienvenue, " . $_SESSION['user_nom'] . "!", "success");
