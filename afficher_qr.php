@@ -19,7 +19,7 @@ if (!$seance_id) {
 
 // Récupérer les informations de la séance
 $sql = "SELECT * FROM seances WHERE id = ? AND enseignant_id = ?";
-$seance = db_query_single($sql, [$seance_id, obtenir_utilisateur_connecte()['id']]);
+$seance = db_query_single($sql, [$seance_id, $_SESSION['user_id']]);
 
 if (!$seance) {
     rediriger('generer_qr.php');

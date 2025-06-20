@@ -12,7 +12,7 @@ if (!est_connecte()) {
     rediriger('login.php');
 }
 
-$utilisateur = obtenir_utilisateur_connecte();
+// Pas besoin de récupérer l'utilisateur, on utilise $_SESSION['user_id']
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nom_cours = trim($_POST['nom_cours']);
@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Enregistrer la séance
         $sql = "INSERT INTO seances (nom_cours, enseignant_id, token, expiration) VALUES (?, ?, ?, ?)";
-        if (db_exec($sql, [$nom_cours, $utilisateur['id'], $token, $expiration])) {
+        if (db_exec($sql, [$nom_cours, $_SESSION['user_id'], $token, $expiration])) {
             $seance_id = db_last_insert_id();
             
             // URL pour le QR code

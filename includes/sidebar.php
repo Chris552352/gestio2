@@ -22,7 +22,6 @@
         <?php endif; ?>
         
         <!-- Options communes -->
-        <li><a href="generer_qr.php" <?php echo basename($_SERVER['PHP_SELF']) === 'generer_qr.php' ? 'class="active"' : ''; ?>><i class="fas fa-qrcode"></i> QR Code Présence</a></li>
         <li><a href="presence.php" <?php echo basename($_SERVER['PHP_SELF']) === 'presence.php' ? 'class="active"' : ''; ?>><i class="fas fa-clipboard-check"></i> Marquer Présence</a></li>
         <li><a href="generer_qr.php" <?php echo basename($_SERVER['PHP_SELF']) === 'generer_qr.php' ? 'class="active"' : ''; ?>><i class="fas fa-qrcode"></i> QR Code Présence</a></li>
         <li><a href="rapports.php" <?php echo basename($_SERVER['PHP_SELF']) === 'rapports.php' ? 'class="active"' : ''; ?>><i class="fas fa-chart-bar"></i> Rapports</a></li>
