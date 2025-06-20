@@ -54,7 +54,10 @@ include 'includes/header_public.php';
                                     <i class="fas fa-user-graduate fa-3x mb-3 text-primary"></i>
                                     <h4>Espace Étudiant</h4>
                                     <p>Justifiez vos absences en ligne</p>
-                                    <a href="justifier_absence.php" class="btn btn-primary">
+                                    <a href="login_etudiant.php" class="btn btn-primary">
+                                        <i class="fas fa-sign-in-alt"></i> Se connecter
+                                    </a>
+                                    <a href="justifier_absence.php" class="btn btn-outline-primary mt-2">
                                         <i class="fas fa-clipboard-check"></i> Justifier une absence
                                     </a>
                                 </div>
